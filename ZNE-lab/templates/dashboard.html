@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Quantum ZNE Lab{% endblock %}
+
+{% block content %}
+<div class="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6">
+
+    <!-- Page Header -->
+    <div class="mb-6 animate-slide-up">
+        <h1 class="text-2xl font-bold text-white mb-1">
+            <span class="bg-gradient-to-r from-quantum-300 to-nebula-400 bg-clip-text text-transparent">
+                Experiment Dashboard
+            </span>
+        </h1>
+        <p class="text-dark-400 text-sm">View and manage your past ZNE experiments.</p>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6" style="animation: slideUp 0.5s ease-out 0.1s both;">
+        <div class="glass-card p-4 text-center">
+            <p class="text-dark-500 text-[10px] font-bold uppercase tracking-wider mb-1">Total Experiments</p>
+            <p class="text-2xl font-bold text-white">{{ experiments | length }}</p>
+        </div>
+        <div class="glass-card p-4 text-center">
+            <p class="text-dark-500 text-[10px] font-bold uppercase tracking-wider mb-1">Completed</p>
+            <p class="text-2xl font-bold text-green-400">{{ experiments | selectattr('status', 'equalto', 'completed') | list | length }}</p>
+        </div>
+        <div class="glass-card p-4 text-center">
+            <p class="text-dark-500 text-[10px] font-bold uppercase tracking-wider mb-1">Failed</p>
+            <p class="text-2xl font-bold text-red-400">{{ experiments | selectattr('status', 'equalto', 'failed') | list | length }}</p>
+        </div>
+        <div class="glass-card p-4 text-center">
+            <p class="text-dark-500 text-[10px] font-bold uppercase tracking-wider mb-1">Best Improvement</p>
+            <p class="text-2xl font-bold text-quantum-300" id="best-improvement">—</p>
+        </div>
+    </div>
+
+    <!-- Experiments Table -->
+    <div class="glass-card overflow-hidden" style="animation: slideUp 0.5s ease-out 0.2s both;">
+        {% if experiments %}
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Name</th>
+                        <th>Folding</th>
+                        <th>Extrapolation</th>
+                        <th>Noise Rate</th>
+                        <th>Mitigated ⟨Z⟩</th>
+                        <th>Ideal ⟨Z⟩</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exp in experiments %}
+                    <tr id="exp-row-{{ exp.id }}">
+                        <td>
+                            <span class="flex items-center gap-2">
+                                <span class="status-dot status-{{ exp.status }}"></span>
+                                <span class="text-dark-400 text-xs capitalize">{{ exp.status }}</span>
+                            </span>
+                        </td>
+                        <td class="font-medium text-dark-200">{{ exp.name }}</td>
+                        <td class="text-dark-400 capitalize">{{ exp.folding_method }}</td>
+                        <td class="text-dark-400 capitalize">{{ exp.extrapolation_method }}</td>
+                        <td class="font-mono text-dark-400">{{ "%.3f" | format(exp.noise_error_rate) }}</td>
+                        <td>
+                            {% if exp.mitigated_result is not none %}
+                                <span class="font-mono text-quantum-300 font-semibold">{{ "%.6f" | format(exp.mitigated_result) }}</span>
+                            {% else %}
+                                <span class="text-dark-500">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if exp.ideal_result is not none %}
+                                <span class="font-mono text-nebula-300">{{ "%.6f" | format(exp.ideal_result) }}</span>
+                            {% else %}
+                                <span class="text-dark-500">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-dark-500 text-xs">{{ exp.created_at.strftime('%b %d, %Y %H:%M') }}</td>
+                        <td>
+                            <div class="flex items-center gap-1">
+                                {% if exp.status == 'completed' %}
+                                <button onclick="viewExperiment({{ exp.id }})" class="btn-secondary text-[11px] px-2.5 py-1.5"
+                                        title="View Results">
+                                    <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                </button>
+                                <a href="/api/report/{{ exp.id }}" class="btn-secondary text-[11px] px-2.5 py-1.5"
+                                   title="Download PDF">
+                                    <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                </a>
+                                {% endif %}
+                                <button onclick="deleteExperiment({{ exp.id }})" class="btn-secondary text-[11px] px-2.5 py-1.5 hover:!border-red-500/50 hover:!text-red-400"
+                                        title="Delete">
+                                    <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="p-12 text-center">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-dark-800 flex items-center justify-center">
+                <svg class="w-8 h-8 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                    <path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <h3 class="text-dark-300 font-semibold mb-1">No experiments yet</h3>
+            <p class="text-dark-500 text-sm mb-4">Run your first ZNE experiment to see results here.</p>
+            <a href="/" class="btn-quantum text-sm inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path d="M12 4v16m8-8H4"/>
+                </svg>
+                New Experiment
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-dark-950/80 backdrop-blur-sm">
+        <div class="glass-card-solid w-full max-w-3xl max-h-[85vh] overflow-y-auto mx-4">
+            <div class="flex items-center justify-between p-5 border-b border-dark-700/30">
+                <h3 class="text-lg font-bold text-white" id="modal-title">Experiment Details</h3>
+                <button onclick="closeModal()" class="text-dark-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-5">
+                <!-- Metric Cards -->
+                <div class="grid grid-cols-3 gap-3 mb-5">
+                    <div class="bg-dark-900/50 rounded-lg p-3 text-center">
+                        <p class="text-dark-500 text-[10px] uppercase tracking-wider mb-1">Mitigated</p>
+                        <p id="modal-mitigated" class="text-lg font-bold text-quantum-300">—</p>
+                    </div>
+                    <div class="bg-dark-900/50 rounded-lg p-3 text-center">
+                        <p class="text-dark-500 text-[10px] uppercase tracking-wider mb-1">Ideal</p>
+                        <p id="modal-ideal" class="text-lg font-bold text-nebula-300">—</p>
+                    </div>
+                    <div class="bg-dark-900/50 rounded-lg p-3 text-center">
+                        <p class="text-dark-500 text-[10px] uppercase tracking-wider mb-1">Improvement</p>
+                        <p id="modal-improvement" class="text-lg font-bold text-orange-300">—</p>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="bg-dark-900/50 rounded-lg p-4 mb-5">
+                    <canvas id="modal-chart" height="250"></canvas>
+                </div>
+
+                <!-- Data Points -->
+                <div class="bg-dark-900/50 rounded-lg overflow-hidden">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Scale Factor (λ)</th>
+                                <th>Noisy ⟨Z⟩</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+    let modalChart = null;
+
+    async function viewExperiment(id) {
+        try {
+            const resp = await fetch(`/api/experiment/${id}`);
+            const data = await resp.json();
+
+            document.getElementById('modal-title').textContent = data.name;
+            document.getElementById('modal-mitigated').textContent =
+                data.mitigated_result !== null ? data.mitigated_result.toFixed(6) : '—';
+            document.getElementById('modal-ideal').textContent =
+                data.ideal_result !== null ? data.ideal_result.toFixed(6) : '—';
+
+            // Calculate improvement
+            if (data.noisy_results && data.noisy_results.length > 0 && data.ideal_result !== null && data.mitigated_result !== null) {
+                const noisyError = Math.abs(data.noisy_results[0] - data.ideal_result);
+                const mitigatedError = Math.abs(data.mitigated_result - data.ideal_result);
+                if (noisyError > 0) {
+                    const improvement = ((noisyError - mitigatedError) / noisyError * 100).toFixed(1);
+                    document.getElementById('modal-improvement').textContent = `${improvement}%`;
+                }
+            }
+
+            // Table
+            const tbody = document.getElementById('modal-table-body');
+            tbody.innerHTML = '';
+            data.scale_factors.forEach((sf, i) => {
+                const val = data.noisy_results[i];
+                tbody.innerHTML += `<tr>
+                    <td class="font-mono text-quantum-300">${sf}</td>
+                    <td class="font-mono text-dark-300">${val !== undefined ? val.toFixed(6) : '—'}</td>
+                </tr>`;
+            });
+
+            // Chart
+            if (modalChart) modalChart.destroy();
+            const ctx = document.getElementById('modal-chart').getContext('2d');
+            modalChart = createZNEChart(ctx, data);
+
+            document.getElementById('detail-modal').classList.remove('hidden');
+        } catch (err) {
+            showToast('Failed to load experiment: ' + err.message, 'error');
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('detail-modal').classList.add('hidden');
+    }
+
+    async function deleteExperiment(id) {
+        if (!confirm('Delete this experiment? This cannot be undone.')) return;
+        try {
+            await fetch(`/api/experiment/${id}`, { method: 'DELETE' });
+            const row = document.getElementById(`exp-row-${id}`);
+            if (row) {
+                row.style.transition = 'opacity 0.3s, transform 0.3s';
+                row.style.opacity = '0';
+                row.style.transform = 'translateX(20px)';
+                setTimeout(() => row.remove(), 300);
+            }
+            showToast('Experiment deleted', 'success');
+        } catch (err) {
+            showToast('Failed to delete: ' + err.message, 'error');
+        }
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+    });
+
+    // Close modal on backdrop click
+    document.getElementById('detail-modal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeModal();
+    });
+
+    function showToast(message, type = 'success') {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('show'));
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 400);
+        }, 3000);
+    }
+</script>
+{% endblock %}

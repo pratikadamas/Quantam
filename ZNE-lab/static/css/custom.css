@@ -1,0 +1,412 @@
+/* ── Quantum ZNE Lab — Custom Styles ────────────────────────── */
+
+/* ── Global ─────────────────────────────────────────────────── */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #334155 #0f172a;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+::selection {
+    background: rgba(6, 182, 212, 0.3);
+    color: #ecfeff;
+}
+
+/* ── Glassmorphism Cards ────────────────────────────────────── */
+.glass-card {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(71, 85, 105, 0.3);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+    border-color: rgba(6, 182, 212, 0.3);
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.05);
+}
+
+.glass-card-solid {
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(71, 85, 105, 0.4);
+    border-radius: 12px;
+}
+
+/* ── CodeMirror Overrides ───────────────────────────────────── */
+.CodeMirror {
+    height: 100% !important;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+    border-radius: 0 0 12px 12px;
+    padding: 4px 0;
+    background: #1a1e2e !important;
+}
+
+.CodeMirror-gutters {
+    background: #1a1e2e !important;
+    border-right: 1px solid rgba(71, 85, 105, 0.3) !important;
+}
+
+.CodeMirror-linenumber {
+    color: #475569 !important;
+}
+
+.CodeMirror-cursor {
+    border-left-color: #22d3ee !important;
+}
+
+.cm-s-dracula .CodeMirror-selected {
+    background: rgba(6, 182, 212, 0.15) !important;
+}
+
+.editor-header {
+    background: rgba(15, 23, 42, 0.8);
+    border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+    border-radius: 12px 12px 0 0;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.editor-header .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+.btn-quantum {
+    background: linear-gradient(135deg, #0891b2, #7c3aed);
+    color: white;
+    font-weight: 600;
+    padding: 10px 24px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(8, 145, 178, 0.3);
+}
+
+.btn-quantum:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 25px rgba(8, 145, 178, 0.4);
+}
+
+.btn-quantum:active {
+    transform: translateY(0);
+}
+
+.btn-quantum:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-quantum::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.5s;
+}
+
+.btn-quantum:hover::before {
+    left: 100%;
+}
+
+.btn-secondary {
+    background: rgba(51, 65, 85, 0.5);
+    color: #94a3b8;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(71, 85, 105, 0.4);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background: rgba(51, 65, 85, 0.8);
+    color: #e2e8f0;
+    border-color: rgba(100, 116, 139, 0.5);
+}
+
+/* ── Form Controls ──────────────────────────────────────────── */
+.form-select,
+.form-input {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(71, 85, 105, 0.4);
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.form-select:focus,
+.form-input:focus {
+    outline: none;
+    border-color: #0891b2;
+    box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.15);
+}
+
+.form-select option {
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+.form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ── Range Slider ───────────────────────────────────────────── */
+.range-quantum {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #0891b2, #7c3aed);
+    border-radius: 2px;
+    outline: none;
+}
+
+.range-quantum::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #22d3ee;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.4);
+    transition: all 0.2s ease;
+}
+
+.range-quantum::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 15px rgba(34, 211, 238, 0.6);
+}
+
+.range-quantum::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #22d3ee;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.4);
+}
+
+/* ── Loading Spinner ────────────────────────────────────────── */
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #22d3ee;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes glow {
+    from { box-shadow: 0 0 5px rgba(6, 182, 212, 0.2); }
+    to { box-shadow: 0 0 20px rgba(6, 182, 212, 0.4); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(3deg); }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+}
+
+/* ── Results Panel ──────────────────────────────────────────── */
+.result-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.result-badge-success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.result-badge-info {
+    background: rgba(6, 182, 212, 0.15);
+    color: #22d3ee;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.result-badge-warning {
+    background: rgba(249, 115, 22, 0.15);
+    color: #fb923c;
+    border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+/* ── Status Dots ────────────────────────────────────────────── */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-completed { background: #22c55e; box-shadow: 0 0 6px rgba(34, 197, 94, 0.5); }
+.status-running   { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.5); animation: pulse 2s infinite; }
+.status-failed    { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.5); }
+.status-pending   { background: #64748b; }
+
+/* ── Table Styles ───────────────────────────────────────────── */
+.data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.data-table thead th {
+    background: rgba(15, 23, 42, 0.6);
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.data-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.data-table tbody tr:hover {
+    background: rgba(6, 182, 212, 0.05);
+}
+
+.data-table tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+    font-size: 13px;
+}
+
+/* ── Template Chip ──────────────────────────────────────────── */
+.template-chip {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    background: rgba(51, 65, 85, 0.4);
+    border: 1px solid rgba(71, 85, 105, 0.3);
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.template-chip:hover {
+    background: rgba(8, 145, 178, 0.15);
+    border-color: rgba(8, 145, 178, 0.4);
+    color: #22d3ee;
+}
+
+.template-chip.active {
+    background: rgba(8, 145, 178, 0.2);
+    border-color: #0891b2;
+    color: #22d3ee;
+}
+
+/* ── Toast Notification ─────────────────────────────────────── */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    backdrop-filter: blur(12px);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast-success {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #4ade80;
+}
+
+.toast-error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+    .experiment-grid {
+        grid-template-columns: 1fr !important;
+    }
+}

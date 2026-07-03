@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Experiment — Quantum ZNE Lab{% endblock %}
+
+{% block content %}
+<div class="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6">
+
+    <!-- Page Header -->
+    <div class="mb-6 animate-slide-up">
+        <h1 class="text-2xl font-bold text-white mb-1">
+            <span class="bg-gradient-to-r from-quantum-300 to-nebula-400 bg-clip-text text-transparent">
+                New Experiment
+            </span>
+        </h1>
+        <p class="text-dark-400 text-sm">Write a quantum circuit, configure ZNE parameters, and visualize the extrapolated results.</p>
+    </div>
+
+    <!-- Main Grid: Editor + Parameters -->
+    <div class="experiment-grid grid grid-cols-[1fr_340px] gap-5 mb-6" style="animation: slideUp 0.5s ease-out 0.1s both;">
+
+        <!-- ═══ LEFT: Code Editor ═══ -->
+        <div class="glass-card overflow-hidden flex flex-col" style="min-height: 480px;">
+            <!-- Editor toolbar -->
+            <div class="editor-header">
+                <div class="flex items-center gap-2">
+                    <span class="dot bg-red-500/80"></span>
+                    <span class="dot bg-yellow-500/80"></span>
+                    <span class="dot bg-green-500/80"></span>
+                    <span class="text-dark-400 text-xs font-mono ml-2">circuit.py</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-dark-500 text-[10px] uppercase tracking-wider">Templates:</span>
+                    <div id="template-chips" class="flex items-center gap-1.5 flex-wrap">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+            <!-- CodeMirror target -->
+            <div id="code-editor" class="flex-1"></div>
+        </div>
+
+        <!-- ═══ RIGHT: Parameters Panel ═══ -->
+        <div class="flex flex-col gap-4">
+
+            <!-- Experiment Name -->
+            <div class="glass-card p-4">
+                <label class="form-label" for="experiment-name">Experiment Name</label>
+                <input type="text" id="experiment-name" class="form-input"
+                       placeholder="My ZNE Experiment" value="Bell State ZNE">
+            </div>
+
+            <!-- Folding Method -->
+            <div class="glass-card p-4">
+                <label class="form-label" for="folding-method">
+                    <span class="flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-quantum-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Folding Method
+                    </span>
+                </label>
+                <select id="folding-method" class="form-select">
+                    <option value="global" selected>Global Folding (U → U·U†·U)</option>
+                    <option value="local">Local Folding (per-gate)</option>
+                </select>
+                <p class="text-dark-500 text-[11px] mt-2">Global folding applies U·U†·U to the entire circuit. Local folding folds individual gates.</p>
+            </div>
+
+            <!-- Scale Factors -->
+            <div class="glass-card p-4">
+                <label class="form-label" for="scale-factors">
+                    <span class="flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-nebula-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        Scale Factors (λ)
+                    </span>
+                </label>
+                <input type="text"
+       id="scale-factors"
+       class="form-input font-mono"
+       value="1,3,5,7,9"
+       placeholder="1,3,5,7,9">
+
+<p class="text-dark-500 text-[11px] mt-2">
+Odd noise amplification factors used for gate folding.
+1 = original circuit, 3 = triple folding, 5 = five-fold folding, etc.
+</p>
+            </div>
+
+            <!-- Extrapolation Method -->
+            <div class="glass-card p-4">
+                <label class="form-label" for="extrapolation-method">
+                    <span class="flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-quantum-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                        Extrapolation Method
+                    </span>
+                </label>
+                <select id="extrapolation-method" class="form-select">
+                    <option value="linear">Linear</option>
+                    <option value="polynomial" selected>Polynomial</option>
+                    <option value="exponential">Exponential</option>
+                </select>
+
+                <!-- Polynomial degree (conditional) -->
+                <div id="poly-degree-group" class="mt-3">
+                    <label class="form-label" for="poly-degree">Polynomial Degree</label>
+                    <select id="poly-degree" class="form-select">
+                        <option value="2" selected>2 (Quadratic)</option>
+                        <option value="3">3 (Cubic)</option>
+                        <option value="4">4 (Quartic)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Noise & Shots -->
+            <div class="glass-card p-4 space-y-4">
+                <!-- Error Rate Slider -->
+                <div>
+                    <label class="form-label" for="noise-rate">
+                        <span class="flex items-center justify-between w-full">
+                            <span class="flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                </svg>
+                                Noise Error Rate
+                            </span>
+                            <span id="noise-rate-value" class="text-quantum-300 font-mono text-xs">0.020</span>
+                        </span>
+                    </label>
+                    <input type="range" id="noise-rate" class="range-quantum"
+                           min="0.001" max="0.1" step="0.001" value="0.02">
+                </div>
+
+                <!-- Shots -->
+                <div>
+                    <label class="form-label" for="shots">Shots</label>
+                    <select id="shots" class="form-select">
+                        <option value="1024">1,024</option>
+                        <option value="4096">4,096</option>
+                        <option value="8192" selected>8,192</option>
+                        <option value="16384">16,384</option>
+                        <option value="32768">32,768</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Run Button -->
+            <button id="run-btn" class="btn-quantum w-full text-sm flex items-center justify-center gap-2" onclick="runExperiment()">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Run ZNE Experiment
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ RESULTS SECTION ═══ -->
+    <div id="results-section" class="hidden" style="animation: slideUp 0.6s ease-out both;">
+
+        <!-- Results Header -->
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <svg class="w-5 h-5 text-quantum-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                Results
+            </h2>
+            <div class="flex items-center gap-2">
+                <button id="download-report-btn" class="btn-secondary text-xs flex items-center gap-1.5 hidden" onclick="downloadReport()">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Download PDF Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+            <!-- Metric Cards -->
+            <div class="glass-card p-5 flex flex-col items-center justify-center text-center">
+                <p class="text-dark-400 text-xs font-semibold uppercase tracking-wider mb-2">Mitigated Value (ZNE)</p>
+                <p id="mitigated-value" class="text-3xl font-bold bg-gradient-to-r from-green-400 to-quantum-300 bg-clip-text text-transparent">—</p>
+                <p class="text-dark-500 text-[11px] mt-1">Extrapolated to λ → 0</p>
+            </div>
+            <div class="glass-card p-5 flex flex-col items-center justify-center text-center">
+                <p class="text-dark-400 text-xs font-semibold uppercase tracking-wider mb-2">Ideal Value</p>
+                <p id="ideal-value" class="text-3xl font-bold text-nebula-300">—</p>
+                <p class="text-dark-500 text-[11px] mt-1">Noiseless simulation</p>
+            </div>
+            <div class="glass-card p-5 flex flex-col items-center justify-center text-center">
+                <p class="text-dark-400 text-xs font-semibold uppercase tracking-wider mb-2">Improvement</p>
+                <p id="improvement-value" class="text-3xl font-bold text-orange-300">—</p>
+                <p class="text-dark-500 text-[11px] mt-1">Error reduction vs noisy (λ=1)</p>
+            </div>
+        </div>
+
+        <!-- Chart + Data Table -->
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5">
+            <!-- Chart -->
+            <div class="glass-card p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-dark-300">Extrapolation Plot</h3>
+                    <div id="method-badge" class="result-badge result-badge-info text-[11px]"></div>
+                </div>
+                <div class="relative" style="height: 360px;">
+                    <canvas id="zne-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="glass-card overflow-hidden">
+                <div class="p-4 border-b border-dark-700/30">
+                    <h3 class="text-sm font-semibold text-dark-300">Measurement Data</h3>
+                </div>
+                <div class="overflow-auto" style="max-height: 380px;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Scale Factor (λ)</th>
+                                <th>⟨Z⟩ Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-table-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-dark-950/80 backdrop-blur-sm">
+        <div class="glass-card-solid p-8 text-center max-w-sm">
+            <div class="relative mx-auto mb-4" style="width: 60px; height: 60px;">
+                <div class="absolute inset-0 rounded-full border-2 border-quantum-400/20"></div>
+                <div class="absolute inset-0 rounded-full border-2 border-transparent border-t-quantum-400 animate-spin"></div>
+                <div class="absolute inset-2 rounded-full border-2 border-transparent border-t-nebula-400 animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+                <div class="absolute inset-4 rounded-full bg-quantum-400/10 animate-pulse"></div>
+            </div>
+            <p class="text-white font-semibold mb-1">Running ZNE Experiment</p>
+            <p id="loading-status" class="text-dark-400 text-sm">Folding circuits and executing on noisy simulator...</p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+{% endblock %}

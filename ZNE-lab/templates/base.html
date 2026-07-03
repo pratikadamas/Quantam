@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Quantum Zero Noise Extrapolation Lab — Run ZNE experiments on quantum circuits with interactive visualization">
+    <meta name="author" content="PRATIK GIRI from Adamas University, Kolkata">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT8Je6raLPg5jWmUvstyxLu1AbKXDFm7j0d2Q&s">
+    <title>{% block title %}Quantum ZNE Lab{% endblock %}</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        quantum: {
+                            50:  '#ecfeff',
+                            100: '#cffafe',
+                            200: '#a5f3fc',
+                            300: '#67e8f9',
+                            400: '#22d3ee',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            700: '#0e7490',
+                            800: '#155e75',
+                            900: '#164e63',
+                        },
+                        nebula: {
+                            50:  '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                        },
+                        dark: {
+                            50:  '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+                    },
+                    animation: {
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- CodeMirror -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/python/python.min.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        if (typeof Chart === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>');
+        }
+    </script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-dark-950 text-dark-200 font-sans min-h-screen overflow-x-hidden">
+
+    <!-- Animated background particles -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-quantum-500/5 rounded-full blur-3xl animate-float"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-nebula-500/5 rounded-full blur-3xl animate-float" style="animation-delay: -3s;"></div>
+        <div class="absolute top-1/2 left-1/2 w-64 h-64 bg-quantum-400/3 rounded-full blur-3xl animate-pulse-slow"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="relative z-50 border-b border-dark-700/50 backdrop-blur-xl bg-dark-900/60">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="/" class="flex items-center gap-3 group" id="nav-logo">
+                    <div class="relative">
+                        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-quantum-400 to-nebula-500 flex items-center justify-center shadow-lg shadow-quantum-500/25 group-hover:shadow-quantum-500/50 transition-shadow">
+                            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(0 12 12)"/>
+                                <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/>
+                                <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-lg font-bold bg-gradient-to-r from-quantum-300 to-nebula-400 bg-clip-text text-transparent">
+                            Quantum ZNE Lab
+                        </span>
+                        <p class="text-[10px] text-dark-400 -mt-0.5 tracking-widest uppercase">Zero Noise Extrapolation</p>
+                    </div>
+                </a>
+
+                <!-- Nav links -->
+                <div class="flex items-center gap-1">
+                    <a href="/" id="nav-experiment"
+                       class="nav-link px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+                              {% if request.endpoint == 'index' %}bg-dark-700/50 text-quantum-300{% else %}text-dark-400 hover:text-dark-200 hover:bg-dark-800/50{% endif %}">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            Experiment
+                        </span>
+                    </a>
+                    <a href="/dashboard" id="nav-dashboard"
+                       class="nav-link px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+                              {% if request.endpoint == 'dashboard' %}bg-dark-700/50 text-quantum-300{% else %}text-dark-400 hover:text-dark-200 hover:bg-dark-800/50{% endif %}">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            Dashboard
+                        </span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <main class="relative z-10">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="relative z-10 border-t border-dark-700/30 mt-12 py-6">
+        <div class="max-w-screen-2xl mx-auto px-6 text-center text-dark-500 text-xs">
+            Quantum ZNE Lab — Built with Flask, Qiskit &amp; Chart.js
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,8 @@
+Flask==3.1.0
+Flask-SQLAlchemy==3.1.1
+numpy==2.3.1
+scipy==1.16.0
+matplotlib==3.10.3
+qiskit==2.1.1
+qiskit-aer==0.17.1
+reportlab==4.4.2
