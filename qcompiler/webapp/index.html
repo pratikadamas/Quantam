@@ -186,19 +186,35 @@
           <p>DAG graph and layer information will appear here after compilation.</p>
         </div>
         <div id="dag-content" class="dag-content hidden">
+          <!-- DAG Conceptual Educational Header -->
+          <div class="dag-concept-banner">
+            <div class="concept-badge-row">
+              <span class="concept-badge">COMPILER IR: DIRECTED ACYCLIC GRAPH</span>
+              <span class="concept-pill"><span class="pill-dot emerald"></span>Preserves Causal Dependencies</span>
+              <span class="concept-pill"><span class="pill-dot indigo"></span>Enables Topological Scheduling</span>
+              <span class="concept-pill"><span class="pill-dot sky"></span>Multi-Pass Optimization</span>
+            </div>
+            <p class="concept-desc">
+              <strong>Not another quantum circuit execution model:</strong> The DAG is an internal compiler intermediate representation (IR). Directed edges (<span class="code-ref">u → v</span>) enforce that operation <span class="code-ref">v</span> cannot execute until <span class="code-ref">u</span> finishes on wire <span class="code-ref">W</span>. This reveals <strong>parallel execution frontiers</strong>, exposes <strong>commuting gates</strong>, and allows passes to contract <strong>inverse pairs (<span class="code-ref">H · H = I</span>)</strong> and merge rotations.
+            </p>
+          </div>
+
           <!-- Summary header chips & view switcher -->
           <div class="dag-header-row">
             <div class="dag-summary" id="dag-summary-chips"></div>
             <div class="dag-view-controls">
               <div class="dag-view-modes">
-                <button class="dag-mode-btn active" id="btn-dag-visual" title="Interactive visual graph">Visual Graph</button>
-                <button class="dag-mode-btn" id="btn-dag-layers" title="Topological layer groups">Layers</button>
-                <button class="dag-mode-btn" id="btn-dag-ascii" title="ASCII text view">ASCII</button>
+                <button class="dag-mode-btn active" id="btn-dag-visual" title="Interactive compiler dependency graph">Dependency Graph</button>
+                <button class="dag-mode-btn" id="btn-dag-layers" title="Topological scheduling frontiers">Scheduling Tiers</button>
+                <button class="dag-mode-btn" id="btn-dag-ascii" title="ASCII IR text view">ASCII IR</button>
               </div>
               <div class="dag-layout-selector" title="Graph layout style">
-                <button class="dag-layout-btn active" id="btn-layout-rails" title="Quantum Rails layout (wires aligned)">Rails</button>
-                <button class="dag-layout-btn" id="btn-layout-tree" title="Topological DAG tree layout">Tree</button>
+                <button class="dag-layout-btn active" id="btn-layout-tree" title="Compiler IR Stages (Parallel Scheduling Frontiers)">Stages (IR)</button>
+                <button class="dag-layout-btn" id="btn-layout-rails" title="Quantum Rails layout (wires aligned)">Rails</button>
               </div>
+              <button class="dag-toggle-btn active" id="btn-toggle-critical" title="Highlight the critical path (longest execution bottleneck)">
+                <span class="crit-icon">⚡</span> Critical Path
+              </button>
               <label class="dag-toggle-wires" title="Toggle wire input/output boundary nodes">
                 <input type="checkbox" id="toggle-dag-wires" checked />
                 <span>Wires</span>
@@ -209,12 +225,19 @@
           <!-- Visual Graph View -->
           <div id="dag-visual-view" class="dag-visual-container">
             <div class="dag-canvas-toolbar">
-              <span class="dag-canvas-hint">Drag to pan • Scroll to zoom • Click node to inspect</span>
+              <span class="dag-canvas-hint">Drag to pan • Scroll to zoom • Hover to trace causality • Click to inspect</span>
               <div class="dag-zoom-btns">
                 <button id="btn-dag-zoom-in" class="dag-ctrl-btn" title="Zoom In">+</button>
                 <button id="btn-dag-zoom-reset" class="dag-ctrl-btn" title="Reset Zoom">⟲</button>
                 <button id="btn-dag-zoom-out" class="dag-ctrl-btn" title="Zoom Out">−</button>
               </div>
+            </div>
+            <div class="dag-legend-bar">
+              <span class="legend-item"><span class="legend-dot gold"></span>⚡ Critical Path (Depth Bottleneck)</span>
+              <span class="legend-item"><span class="legend-dot amber"></span>Prerequisite (In-degree)</span>
+              <span class="legend-item"><span class="legend-dot violet"></span>Dependent (Blocked)</span>
+              <span class="legend-item"><span class="legend-dot emerald"></span>Independent / Commuting (Concurrency)</span>
+              <span class="legend-item"><span class="legend-dot sky"></span>Topological Stages (Parallel Frontiers)</span>
             </div>
             <div class="dag-svg-wrap" id="dag-svg-wrap">
               <svg id="dag-svg" class="dag-svg" width="100%" height="100%"></svg>

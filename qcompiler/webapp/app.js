@@ -386,7 +386,8 @@ function renderDagSection(dagInfo) {
   drawDagSvg(d.graph, showWires);
 }
 
-let currentDagLayout = 'rails';
+let currentDagLayout = 'tree'; // 'tree' represents Stages (IR) parallel frontiers
+let showDagCriticalPath = true; // Enabled by default to highlight circuit depth bottleneck
 
 function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) {
   const svg = $('dag-svg');
@@ -413,6 +414,14 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
 
   const nodeMap = new Map();
   activeNodes.forEach(n => nodeMap.set(n.id, n));
+
+  // Critical path sets
+  const critNodeSet = new Set(graphData.critical_path || []);
+  const critEdgeSet = new Set();
+  const cp = graphData.critical_path || [];
+  for (let i = 0; i < cp.length - 1; i++) {
+    critEdgeSet.add(`${cp[i]}->${cp[i+1]}`);
+  }
 
   // Collect all unique quantum and classical wires
   const qWiresSet = new Set();
@@ -443,28 +452,27 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
   const sortedClbitWires = Array.from(cWiresSet).sort((a, b) => parseWireIdx(a) - parseWireIdx(b));
   const allOrderedWires = [...sortedQubitWires, ...sortedClbitWires];
 
-  // Map wire to Y track position
+  // Map wire to Y track position (for Rails layout)
   const trackYMap = new Map();
-  const padY = 70;
+  const padYRails = 70;
   const trackSpacing = 110;
-  let currentY = padY;
+  let currentRailsY = padYRails;
 
   sortedQubitWires.forEach(w => {
-    trackYMap.set(w, currentY);
-    currentY += trackSpacing;
+    trackYMap.set(w, currentRailsY);
+    currentRailsY += trackSpacing;
   });
 
   if (sortedClbitWires.length > 0) {
-    currentY += 25; // extra spacing before classical bits
+    currentRailsY += 25;
     sortedClbitWires.forEach(w => {
-      trackYMap.set(w, currentY);
-      currentY += 85;
+      trackYMap.set(w, currentRailsY);
+      currentRailsY += 85;
     });
   }
 
   function getWireY(wireName) {
-    if (trackYMap.has(wireName)) return trackYMap.get(wireName);
-    return padY;
+    return trackYMap.has(wireName) ? trackYMap.get(wireName) : padYRails;
   }
 
   // Column assignment based on topological order
@@ -497,17 +505,20 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
   sortedColKeys.forEach((key, idx) => normalizedCol.set(key, idx));
 
   // Geometry configuration
-  const colWidth = 160;
-  const padX = 90;
-  const maxColIdx = Math.max(1, sortedColKeys.length - 1);
-  const totalWidth = padX * 2 + (maxColIdx + 1) * colWidth + 60;
-  const totalHeight = Math.max(480, currentY + 50);
-
   const nodeCoords = new Map();
   const nodePorts = new Map(); // nid -> { in: { [wire]: {x,y} }, out: { [wire]: {x,y} } }
+  let stageLanesHtml = '';
+  let totalWidth = 800;
+  let totalHeight = 520;
 
   if (layoutMode === 'rails') {
-    // ─── 1. QUANTUM RAILS LAYOUT (Horizontal tracks per qubit) ───
+    // ─── 1. QUANTUM RAILS LAYOUT ───
+    const colWidth = 160;
+    const padX = 90;
+    const maxColIdx = Math.max(1, sortedColKeys.length - 1);
+    totalWidth = padX * 2 + (maxColIdx + 1) * colWidth + 60;
+    totalHeight = Math.max(480, currentRailsY + 50);
+
     sortedColKeys.forEach(colKey => {
       const colIdx = normalizedCol.get(colKey);
       const nodesInCol = layerCols.get(colKey);
@@ -520,14 +531,14 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
         const ports = { in: {}, out: {} };
 
         if (isIn) {
-          const w = 72;
+          const w = 76;
           const h = 28;
           const y = getWireY(node.wire) - h / 2;
           const x = colX;
           nodeCoords.set(node.id, { x, y, width: w, height: h, mode: 'in' });
           ports.out[node.wire] = { x: x + w, y: y + h / 2 };
         } else if (isOut) {
-          const w = 72;
+          const w = 76;
           const h = 28;
           const y = getWireY(node.wire) - h / 2;
           const x = colX;
@@ -539,12 +550,11 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
           const clbits = node.clbits || [];
 
           if (['cx', 'cy', 'cz', 'swap', 'cp', 'crz'].includes(g) && qubits.length >= 2) {
-            // Two-qubit gate spanning control & target
             const y0 = getWireY(qubits[0]);
             const y1 = getWireY(qubits[1]);
             const topY = Math.min(y0, y1) - 22;
             const botY = Math.max(y0, y1) + 22;
-            const w = 84;
+            const w = 86;
             const h = botY - topY;
             const x = colX + 18;
 
@@ -554,12 +564,11 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
             ports.in[qubits[1]] = { x: x, y: y1 };
             ports.out[qubits[1]] = { x: x + w, y: y1 };
           } else if (g === 'measure') {
-            // Measure node on quantum wire
             const qWire = qubits[0] || 'q[0]';
             const cWire = clbits[0] || 'c[0]';
             const yQ = getWireY(qWire);
-            const w = 88;
-            const h = 52;
+            const w = 92;
+            const h = 54;
             const x = colX + 16;
             const y = yQ - h / 2;
 
@@ -568,11 +577,10 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
             ports.out[qWire] = { x: x + w, y: yQ };
             ports.out[cWire] = { x: x + w / 2, y: y + h };
           } else {
-            // Single-qubit gate
             const qWire = qubits[0] || 'q[0]';
             const yQ = getWireY(qWire);
-            const w = 82;
-            const h = 50;
+            const w = 84;
+            const h = 52;
             const x = colX + 20;
             const y = yQ - h / 2;
 
@@ -585,29 +593,91 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
       });
     });
   } else {
-    // ─── 2. TREE / COMPACT LAYOUT ───
+    // ─── 2. COMPILER IR STAGES LAYOUT (Topological Frontiers) ───
+    const colWidth = 230;
+    const padX = 50;
+    const padY = 95;
+    const nodeGapY = 105;
+
+    let maxNodesInCol = 1;
+    sortedColKeys.forEach(colKey => {
+      const count = layerCols.get(colKey).length;
+      if (count > maxNodesInCol) maxNodesInCol = count;
+    });
+
+    totalHeight = Math.max(520, padY + maxNodesInCol * nodeGapY + 40);
+    totalWidth = padX * 2 + sortedColKeys.length * colWidth + 40;
+
     sortedColKeys.forEach(colKey => {
       const colIdx = normalizedCol.get(colKey);
       const nodesInCol = layerCols.get(colKey);
       const colX = padX + colIdx * colWidth;
 
+      // Draw background stage column (Frontier lane)
+      const laneX = colX - 12;
+      const laneW = colWidth - 20;
+      const laneH = totalHeight - 45;
+
+      const hasOnlyIn = nodesInCol.every(n => n.type === 'in');
+      const hasOnlyOut = nodesInCol.every(n => n.type === 'out');
+      let stageTitle = `STAGE ${colIdx + 1}: PARALLEL FRONTIER`;
+      let stageSub = `Concurrent • 0 Dependencies`;
+
+      if (hasOnlyIn) {
+        stageTitle = `STAGE 0: INPUTS`;
+        stageSub = `Qubit Initial States |0⟩`;
+      } else if (hasOnlyOut) {
+        stageTitle = `STAGE ${colIdx}: OUTPUTS`;
+        stageSub = `Register Output Boundaries`;
+      }
+
+      stageLanesHtml += `
+        <g class="stage-lane-group">
+          <rect class="dag-stage-lane" x="${laneX}" y="20" width="${laneW}" height="${laneH}" rx="10"/>
+          <g transform="translate(${laneX + 8}, 28)">
+            <rect class="dag-stage-header-bg" width="${laneW - 16}" height="38" rx="6"/>
+            <text x="${(laneW - 16)/2}" y="17" text-anchor="middle" font-size="9.5" font-weight="800" font-family="var(--font-mono)" fill="#c7d2fe">${stageTitle}</text>
+            <text x="${(laneW - 16)/2}" y="31" text-anchor="middle" font-size="8" font-family="var(--font-mono)" fill="#94a3b8">${stageSub}</text>
+          </g>
+        </g>
+      `;
+
       nodesInCol.forEach((node, rIdx) => {
-        const w = 110;
-        const h = 50;
-        const x = colX;
-        const y = padY + rIdx * 76;
-        nodeCoords.set(node.id, { x, y, width: w, height: h, mode: 'box' });
+        const isIn = node.type === 'in';
+        const isOut = node.type === 'out';
+        const w = (isIn || isOut) ? 140 : 175;
+        const h = (isIn || isOut) ? 46 : 76;
+        const x = colX + ((colWidth - 20) - w) / 2 - 2;
+        const y = padY + rIdx * nodeGapY;
+
+        nodeCoords.set(node.id, { x, y, width: w, height: h, mode: 'ir-card', colIdx });
 
         const ports = { in: {}, out: {} };
         const midY = y + h / 2;
-        (node.qubits || [node.wire || 'q']).forEach(wire => {
-          ports.in[wire] = { x: x, y: midY };
-          ports.out[wire] = { x: x + w, y: midY };
-        });
-        (node.clbits || []).forEach(wire => {
-          ports.in[wire] = { x: x, y: midY };
-          ports.out[wire] = { x: x + w, y: midY };
-        });
+
+        if (isIn) {
+          ports.out[node.wire || 'q'] = { x: x + w, y: midY };
+        } else if (isOut) {
+          ports.in[node.wire || 'q'] = { x: x, y: midY };
+        } else {
+          // Op node with qubit / clbit ports
+          const inWires = [...(node.qubits || []), ...(node.clbits || [])];
+          const outWires = [...(node.qubits || []), ...(node.clbits || [])];
+          
+          if (inWires.length <= 1) {
+            inWires.forEach(w => ports.in[w] = { x: x, y: midY });
+          } else {
+            const step = h / (inWires.length + 1);
+            inWires.forEach((w, i) => ports.in[w] = { x: x, y: y + (i + 1) * step });
+          }
+
+          if (outWires.length <= 1) {
+            outWires.forEach(w => ports.out[w] = { x: x + w, y: midY });
+          } else {
+            const step = h / (outWires.length + 1);
+            outWires.forEach((w, i) => ports.out[w] = { x: x + w, y: y + (i + 1) * step });
+          }
+        }
         nodePorts.set(node.id, ports);
       });
     });
@@ -622,6 +692,15 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
       <marker id="dag-arrow-clbit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
         <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#fbbf24"/>
       </marker>
+      <marker id="dag-arrow-crit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#f59e0b"/>
+      </marker>
+      <marker id="dag-arrow-prereq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#f97316"/>
+      </marker>
+      <marker id="dag-arrow-dep" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#a855f7"/>
+      </marker>
       <linearGradient id="grad-node-op" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stop-color="#141c30"/>
         <stop offset="100%" stop-color="#0c1222"/>
@@ -633,7 +712,7 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
     </defs>
   `;
 
-  // Draw Background Rails (in Rails mode)
+  // Draw Background Rails (only in Rails mode)
   let railsHtml = '';
   if (layoutMode === 'rails') {
     allOrderedWires.forEach(wire => {
@@ -656,7 +735,7 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
     });
   }
 
-  // Draw Edges with straight paths on same rail, and smooth curves across tracks
+  // Draw Edges (Causal Dependencies)
   let edgesHtml = '';
   activeEdges.forEach(edge => {
     const srcPorts = nodePorts.get(edge.source);
@@ -674,22 +753,38 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
     const y2 = dstPt.y;
 
     const isClbit = wire.startsWith('c');
-    const marker = isClbit ? 'url(#dag-arrow-clbit)' : 'url(#dag-arrow)';
-    const edgeClass = isClbit ? 'dag-edge clbit' : 'dag-edge';
-    const strokeColor = isClbit ? '#fbbf24' : '#818cf8';
+    const isCriticalEdge = showDagCriticalPath && critEdgeSet.has(`${edge.source}->${edge.target}`);
+
+    let marker = isClbit ? 'url(#dag-arrow-clbit)' : 'url(#dag-arrow)';
+    if (isCriticalEdge) marker = 'url(#dag-arrow-crit)';
+
+    let edgeClass = isClbit ? 'dag-edge clbit' : 'dag-edge';
+    if (isCriticalEdge) edgeClass += ' on-critical-path';
+
+    const strokeColor = isCriticalEdge ? '#f59e0b' : (isClbit ? '#fbbf24' : '#818cf8');
     const strokeDash = isClbit ? 'stroke-dasharray="4 3"' : '';
 
     let pathD = '';
-    if (Math.abs(y1 - y2) < 2) {
+    if (Math.abs(y1 - y2) < 2 && x2 > x1) {
       pathD = `M ${x1} ${y1} L ${x2} ${y2}`;
     } else {
       const dx = Math.max(30, Math.abs(x2 - x1) * 0.45);
       pathD = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
     }
 
+    // Midpoint wire pill label
+    const mx = (x1 + x2) / 2;
+    const my = (y1 + y2) / 2;
+    const pillBorder = isCriticalEdge ? '#f59e0b' : (isClbit ? 'rgba(251,191,36,0.5)' : 'rgba(129,140,248,0.4)');
+    const pillColor = isCriticalEdge ? '#fbbf24' : (isClbit ? '#fbbf24' : '#38bdf8');
+
     edgesHtml += `
       <g class="edge-group" data-src="${edge.source}" data-dst="${edge.target}" data-wire="${wire}">
-        <path d="${pathD}" class="${edgeClass}" stroke="${strokeColor}" stroke-width="2" ${strokeDash} marker-end="${marker}"/>
+        <path d="${pathD}" class="${edgeClass}" stroke="${strokeColor}" stroke-width="${isCriticalEdge ? 3.5 : 2}" ${strokeDash} marker-end="${marker}"/>
+        <g transform="translate(${mx}, ${my - 8})" class="edge-wire-pill" pointer-events="none">
+          <rect x="-18" y="0" width="36" height="16" rx="4" fill="#0b1120" stroke="${pillBorder}" stroke-width="1"/>
+          <text x="0" y="11" text-anchor="middle" font-size="8.5" font-weight="700" font-family="var(--font-mono)" fill="${pillColor}">${wire}</text>
+        </g>
       </g>
     `;
   });
@@ -700,29 +795,101 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
     const pos = nodeCoords.get(node.id);
     if (!pos) return;
 
-    if (pos.mode === 'in') {
+    const isCriticalNode = showDagCriticalPath && critNodeSet.has(node.id);
+    const critClass = isCriticalNode ? ' on-critical-path' : '';
+
+    if (pos.mode === 'ir-card') {
+      // ─── COMPILER IR CARD NODE ───
+      if (node.type === 'in') {
+        const isClbit = (node.wire || '').startsWith('c');
+        const borderColor = isCriticalNode ? '#f59e0b' : (isClbit ? '#fbbf24' : '#10b981');
+        const badgeColor = isClbit ? '#fbbf24' : '#34d399';
+        const label = isClbit ? `IN ${node.wire}` : `|0⟩ ${node.wire || ''}`;
+
+        nodesHtml += `
+          <g class="dag-node dag-in${critClass}" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">
+            <rect class="node-card-bg" width="${pos.width}" height="${pos.height}" rx="8" fill="#071d15" stroke="${borderColor}" stroke-width="1.6"/>
+            <text x="12" y="16" font-size="8" font-weight="700" font-family="var(--font-mono)" fill="${badgeColor}">IN BOUNDARY</text>
+            <text x="12" y="32" font-size="12" font-weight="800" font-family="var(--font-mono)" fill="#e2e8f0">${label}</text>
+            <circle cx="${pos.width}" cy="${pos.height/2}" r="4" fill="${badgeColor}" stroke="#071d15" stroke-width="1.5"/>
+            <text x="${pos.width - 8}" y="15" text-anchor="end" font-size="8.5" font-family="var(--font-mono)" fill="#64748b">#${node.id}</text>
+          </g>
+        `;
+      } else if (node.type === 'out') {
+        const isClbit = (node.wire || '').startsWith('c');
+        const borderColor = isCriticalNode ? '#f59e0b' : (isClbit ? '#fbbf24' : '#f43f5e');
+        const badgeColor = isClbit ? '#fbbf24' : '#fb7185';
+        const label = isClbit ? `OUT ${node.wire}` : `OUT ${node.wire || ''}`;
+
+        nodesHtml += `
+          <g class="dag-node dag-out${critClass}" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">
+            <rect class="node-card-bg" width="${pos.width}" height="${pos.height}" rx="8" fill="#200d14" stroke="${borderColor}" stroke-width="1.6"/>
+            <circle cx="0" cy="${pos.height/2}" r="4" fill="${badgeColor}" stroke="#200d14" stroke-width="1.5"/>
+            <text x="12" y="16" font-size="8" font-weight="700" font-family="var(--font-mono)" fill="${badgeColor}">OUT BOUNDARY</text>
+            <text x="12" y="32" font-size="12" font-weight="800" font-family="var(--font-mono)" fill="#e2e8f0">${label}</text>
+            <text x="${pos.width - 8}" y="15" text-anchor="end" font-size="8.5" font-family="var(--font-mono)" fill="#64748b">#${node.id}</text>
+          </g>
+        `;
+      } else {
+        // Operation Node Card
+        const gName = (node.gate || node.name || 'OP').toUpperCase();
+        const isMeasure = gName === 'MEASURE';
+        const isTwoQ = (node.qubits || []).length >= 2;
+        const cardBg = isMeasure ? 'url(#grad-node-measure)' : 'url(#grad-node-op)';
+        let cardBorder = isMeasure ? '#fbbf24' : (isTwoQ ? '#a78bfa' : '#818cf8');
+        if (isCriticalNode) cardBorder = '#f59e0b';
+
+        let targetText = (node.qubits || []).join(', ');
+        if (node.clbits && node.clbits.length) {
+          targetText += ` ⇒ ${node.clbits.join(', ')}`;
+        }
+
+        nodesHtml += `
+          <g class="dag-node dag-op${critClass}" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">
+            <rect class="node-card-bg" width="${pos.width}" height="${pos.height}" rx="9" fill="${cardBg}" stroke="${cardBorder}" stroke-width="1.8"/>
+            
+            <!-- Header bar -->
+            <rect x="0" y="0" width="${pos.width}" height="20" rx="9" fill="rgba(30, 41, 59, 0.45)"/>
+            <text x="8" y="14" font-size="9" font-weight="700" font-family="var(--font-mono)" fill="#94a3b8">#${node.id}</text>
+            ${isCriticalNode 
+              ? `<text x="${pos.width - 8}" y="14" text-anchor="end" font-size="8" font-weight="800" font-family="var(--font-mono)" fill="#fbbf24">⚡ CRITICAL</text>`
+              : `<text x="${pos.width - 8}" y="14" text-anchor="end" font-size="8" font-weight="600" font-family="var(--font-mono)" fill="#64748b">IR OP</text>`
+            }
+
+            <!-- Main Opcode -->
+            <text x="10" y="40" font-size="15" font-weight="800" font-family="var(--font-mono)" fill="${isMeasure ? '#fbbf24' : (isTwoQ ? '#c4b5fd' : '#e2e8f0')}">${gName}</text>
+
+            <!-- Wires / Targets -->
+            <text x="10" y="55" font-size="9.5" font-family="var(--font-mono)" fill="#38bdf8">${targetText}</text>
+
+            <!-- In/Out degree stats -->
+            <text x="10" y="68" font-size="8" font-family="var(--font-mono)" fill="#64748b">In: ${node.in_degree ?? 1} • Out: ${node.out_degree ?? 1}</text>
+          </g>
+        `;
+      }
+    } else if (pos.mode === 'in') {
       const isClbit = (node.wire || '').startsWith('c');
-      const pillBorder = isClbit ? '#fbbf24' : '#10b981';
+      const pillBorder = isCriticalNode ? '#f59e0b' : (isClbit ? '#fbbf24' : '#10b981');
       const pillFill = isClbit ? '#241b12' : '#072218';
       const pillText = isClbit ? '#fbbf24' : '#34d399';
       const label = isClbit ? `IN ${node.wire}` : `|0⟩ ${node.wire || ''}`;
 
       nodesHtml += `
-        <g class="dag-node dag-in" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">
-          <rect width="${pos.width}" height="${pos.height}" rx="14" fill="${pillFill}" stroke="${pillBorder}" stroke-width="1.6"/>
+        <g class="dag-node dag-in${critClass}" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">
+          <rect class="node-card-bg" width="${pos.width}" height="${pos.height}" rx="14" fill="${pillFill}" stroke="${pillBorder}" stroke-width="1.6"/>
           <text x="${pos.width/2}" y="18" text-anchor="middle" font-size="11" font-weight="700" font-family="var(--font-mono)" fill="${pillText}">${label}</text>
         </g>
       `;
     } else if (pos.mode === 'out') {
       const isClbit = (node.wire || '').startsWith('c');
-      const pillBorder = isClbit ? '#fbbf24' : '#f43f5e';
+      const pillBorder = isCriticalNode ? '#f59e0b' : (isClbit ? '#fbbf24' : '#f43f5e');
       const pillFill = isClbit ? '#241b12' : '#290b12';
       const pillText = isClbit ? '#fbbf24' : '#fb7185';
       const label = isClbit ? `OUT ${node.wire}` : `OUT ${node.wire || ''}`;
 
       nodesHtml += `
-        <g class="dag-node dag-out" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">
-          <rect width="${pos.width}" height="${pos.height}" rx="14" fill="${pillFill}" stroke="${pillBorder}" stroke-width="1.6"/>
+        <g class="dag-node dag-out${critClass}" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">
+          <rect class="node-card-bg" width="${pos.width}" height="${pos.height}" rx="14" fill="${pillFill}" stroke="${pillBorder}" stroke-width="1.6"/>
           <text x="${pos.width/2}" y="18" text-anchor="middle" font-size="11" font-weight="700" font-family="var(--font-mono)" fill="${pillText}">${label}</text>
         </g>
       `;
@@ -730,39 +897,29 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
       const gName = (node.gate || 'CX').toUpperCase();
       const midY = (pos.y0 + pos.y1) / 2;
       const centerX = pos.x + pos.width / 2;
+      const borderCol = isCriticalNode ? '#f59e0b' : 'rgba(99,131,255,0.35)';
 
       nodesHtml += `
-        <g class="dag-node dag-two-q" data-id="${node.id}">
-          <!-- Subtle bounding card -->
-          <rect x="${pos.x}" y="${pos.y}" width="${pos.width}" height="${pos.height}" rx="12" fill="rgba(18,20,38,0.85)" stroke="rgba(99,131,255,0.35)" stroke-width="1.5" stroke-dasharray="3 3"/>
-          
-          <!-- Vertical link bridge -->
-          <line x1="${centerX}" y1="${pos.y0}" x2="${centerX}" y2="${pos.y1}" stroke="#818cf8" stroke-width="3" stroke-linecap="round"/>
-          
-          <!-- Control Hub on Wire 0 -->
+        <g class="dag-node dag-two-q${critClass}" data-id="${node.id}">
+          <rect class="node-card-bg" x="${pos.x}" y="${pos.y}" width="${pos.width}" height="${pos.height}" rx="12" fill="rgba(18,20,38,0.85)" stroke="${borderCol}" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <line x1="${centerX}" y1="${pos.y0}" x2="${centerX}" y2="${pos.y1}" stroke="${isCriticalNode ? '#f59e0b' : '#818cf8'}" stroke-width="3" stroke-linecap="round"/>
           <circle cx="${centerX}" cy="${pos.y0}" r="12" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
           <circle cx="${centerX}" cy="${pos.y0}" r="5" fill="#38bdf8"/>
-          
-          <!-- Middle Gate Badge -->
           <g transform="translate(${centerX - 20}, ${midY - 11})">
-            <rect width="40" height="22" rx="6" fill="#1e1b4b" stroke="#a78bfa" stroke-width="1.6"/>
+            <rect width="40" height="22" rx="6" fill="#1e1b4b" stroke="${isCriticalNode ? '#f59e0b' : '#a78bfa'}" stroke-width="1.6"/>
             <text x="20" y="15" text-anchor="middle" font-size="11" font-weight="800" font-family="var(--font-mono)" fill="#c4b5fd">${gName}</text>
           </g>
-          
-          <!-- Target Hub on Wire 1 -->
           <circle cx="${centerX}" cy="${pos.y1}" r="15" fill="#0f172a" stroke="#a78bfa" stroke-width="2"/>
           <circle cx="${centerX}" cy="${pos.y1}" r="11" fill="none" stroke="#c4b5fd" stroke-width="2"/>
           <line x1="${centerX - 7}" y1="${pos.y1}" x2="${centerX + 7}" y2="${pos.y1}" stroke="#c4b5fd" stroke-width="2"/>
           <line x1="${centerX}" y1="${pos.y1 - 7}" x2="${centerX}" y2="${pos.y1 + 7}" stroke="#c4b5fd" stroke-width="2"/>
-          
-          <!-- Node ID tag -->
           <text x="${pos.x + pos.width - 6}" y="${pos.y + 13}" text-anchor="end" font-size="8.5" font-family="var(--font-mono)" fill="#64748b">#${node.id}</text>
         </g>
       `;
     } else if (pos.mode === 'measure') {
       nodesHtml += `
-        <g class="dag-node dag-measure" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">
-          <rect width="${pos.width}" height="${pos.height}" rx="10" fill="url(#grad-node-measure)" stroke="#fbbf24" stroke-width="1.8"/>
+        <g class="dag-node dag-measure${critClass}" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">
+          <rect class="node-card-bg" width="${pos.width}" height="${pos.height}" rx="10" fill="url(#grad-node-measure)" stroke="${isCriticalNode ? '#f59e0b' : '#fbbf24'}" stroke-width="1.8"/>
           <line x1="10" y1="0" x2="${pos.width - 10}" y2="0" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round"/>
           <path d="M 26 30 A 18 18 0 0 1 62 30" fill="none" stroke="#fbbf24" stroke-width="1.8"/>
           <line x1="44" y1="30" x2="55" y2="16" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>
@@ -771,11 +928,10 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
         </g>
       `;
     } else {
-      // Single-qubit standard gate
       const gName = (node.name || 'OP').toUpperCase();
       nodesHtml += `
-        <g class="dag-node dag-single" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">
-          <rect width="${pos.width}" height="${pos.height}" rx="10" fill="url(#grad-node-op)" stroke="#818cf8" stroke-width="1.8"/>
+        <g class="dag-node dag-single${critClass}" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">
+          <rect class="node-card-bg" width="${pos.width}" height="${pos.height}" rx="10" fill="url(#grad-node-op)" stroke="${isCriticalNode ? '#f59e0b' : '#818cf8'}" stroke-width="1.8"/>
           <line x1="10" y1="0" x2="${pos.width - 10}" y2="0" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
           <text x="${pos.width/2}" y="27" text-anchor="middle" font-size="14" font-weight="800" font-family="var(--font-mono)" fill="#e2e8f0">${gName}</text>
           <text x="${pos.width/2}" y="42" text-anchor="middle" font-size="10" font-family="var(--font-mono)" fill="#818cf8">${pos.qWire || ''}</text>
@@ -785,20 +941,21 @@ function drawDagSvg(graphData, showWires = true, layoutMode = currentDagLayout) 
     }
   });
 
-  svg.setAttribute('viewBox', `0 0 ${Math.max(640, totalWidth)} ${Math.max(380, totalHeight)}`);
+  svg.setAttribute('viewBox', `0 0 ${Math.max(680, totalWidth)} ${Math.max(400, totalHeight)}`);
   svg.innerHTML = `
     ${defs}
     <g id="dag-pan-zoom-root" transform="translate(${dagTransform.x}, ${dagTransform.y}) scale(${dagTransform.scale})">
+      <g class="dag-stages-layer">${stageLanesHtml}</g>
       <g class="dag-rails-layer">${railsHtml}</g>
       <g class="dag-edges-layer">${edgesHtml}</g>
       <g class="dag-nodes-layer">${nodesHtml}</g>
     </g>
   `;
 
-  attachDagNodeInteractions(activeNodes, activeEdges);
+  attachDagNodeInteractions(activeNodes, activeEdges, nodeLayer, critNodeSet);
 }
 
-function attachDagNodeInteractions(nodes, edges) {
+function attachDagNodeInteractions(nodes, edges, nodeLayer, critNodeSet) {
   const svg = $('dag-svg');
   if (!svg) return;
 
@@ -824,75 +981,103 @@ function attachDagNodeInteractions(nodes, edges) {
     nodeEl.addEventListener('mouseenter', () => {
       const preds = new Set(incoming.get(id) || []);
       const succs = new Set(outgoing.get(id) || []);
-      const related = new Set([id, ...preds, ...succs]);
 
       nodeEls.forEach(el => {
         const nid = parseInt(el.dataset.id, 10);
         if (nid === id) {
           el.classList.add('active-selected');
-        } else if (related.has(nid)) {
-          el.classList.add('highlighted');
+        } else if (preds.has(nid)) {
+          el.classList.add('is-prerequisite');
+        } else if (succs.has(nid)) {
+          el.classList.add('is-dependent');
         } else {
-          el.classList.add('dimmed');
+          el.classList.add('is-independent');
         }
       });
 
       edgeEls.forEach(el => {
         const src = parseInt(el.dataset.src, 10);
         const dst = parseInt(el.dataset.dst, 10);
-        if (src === id || dst === id) {
-          el.querySelector('.dag-edge')?.classList.add('highlighted');
+        const path = el.querySelector('.dag-edge');
+        if (!path) return;
+
+        if (dst === id) {
+          path.classList.add('is-prereq-edge');
+          path.setAttribute('marker-end', 'url(#dag-arrow-prereq)');
+        } else if (src === id) {
+          path.classList.add('is-dep-edge');
+          path.setAttribute('marker-end', 'url(#dag-arrow-dep)');
         } else {
-          el.querySelector('.dag-edge')?.classList.add('dimmed');
+          path.classList.add('dimmed');
         }
       });
     });
 
     nodeEl.addEventListener('mouseleave', () => {
-      nodeEls.forEach(el => el.classList.remove('active-selected', 'highlighted', 'dimmed'));
+      nodeEls.forEach(el => el.classList.remove('active-selected', 'is-prerequisite', 'is-dependent', 'is-independent'));
       edgeEls.forEach(el => {
         const path = el.querySelector('.dag-edge');
-        if (path) path.classList.remove('highlighted', 'dimmed');
+        if (path) {
+          path.classList.remove('is-prereq-edge', 'is-dep-edge', 'dimmed');
+          const wire = el.dataset.wire || '';
+          const isClbit = wire.startsWith('c');
+          const src = parseInt(el.dataset.src, 10);
+          const dst = parseInt(el.dataset.dst, 10);
+          const isCrit = showDagCriticalPath && critNodeSet && critNodeSet.has(src) && critNodeSet.has(dst);
+          path.setAttribute('marker-end', isCrit ? 'url(#dag-arrow-crit)' : (isClbit ? 'url(#dag-arrow-clbit)' : 'url(#dag-arrow)'));
+        }
       });
     });
 
     nodeEl.addEventListener('click', (e) => {
       e.stopPropagation();
-      openDagInspector(node, incoming.get(id) || [], outgoing.get(id) || [], nodeMap);
+      openDagInspector(node, incoming.get(id) || [], outgoing.get(id) || [], nodeMap, nodeLayer, critNodeSet);
     });
   });
 }
 
-function openDagInspector(node, preds, succs, nodeMap) {
+function openDagInspector(node, preds, succs, nodeMap, nodeLayer, critNodeSet) {
   const inspector = $('dag-inspector');
   const title = $('inspector-title');
   const body = $('inspector-body');
   if (!inspector || !title || !body || !node) return;
 
-  title.textContent = `[#${node.id}] ${node.name || 'Node'}`;
+  title.textContent = `[IR Node #${node.id}] ${node.name || 'Node'}`;
 
-  const predNames = preds.map(id => `#${id} ${nodeMap.get(id)?.name || ''}`).join(', ') || 'None';
-  const succNames = succs.map(id => `#${id} ${nodeMap.get(id)?.name || ''}`).join(', ') || 'None';
+  const predNames = preds.map(id => `#${id} ${nodeMap.get(id)?.name || ''}`).join(', ') || 'None (Roots)';
+  const succNames = succs.map(id => `#${id} ${nodeMap.get(id)?.name || ''}`).join(', ') || 'None (Terminals)';
+  const stageNum = nodeLayer?.has(node.id) ? `Stage ${nodeLayer.get(node.id)}` : '—';
+  const isCrit = critNodeSet?.has(node.id);
 
   let extraRows = '';
   if (node.type === 'op') {
     extraRows += `
-      <div class="inspector-row"><span class="inspector-key">Gate:</span><span class="inspector-val">${node.gate || '—'}</span></div>
-      <div class="inspector-row"><span class="inspector-key">Qubits:</span><span class="inspector-val">${node.qubits?.join(', ') || '—'}</span></div>
-      ${node.clbits?.length ? `<div class="inspector-row"><span class="inspector-key">Clbits:</span><span class="inspector-val">${node.clbits.join(', ')}</span></div>` : ''}
-      ${node.params?.length ? `<div class="inspector-row"><span class="inspector-key">Params:</span><span class="inspector-val">[${node.params.map(p => Number(p).toFixed(3)).join(', ')}]</span></div>` : ''}
+      <div class="inspector-row"><span class="inspector-key">Opcode:</span><span class="inspector-val" style="color:var(--indigo);font-weight:700;">${(node.gate || '').toUpperCase()}</span></div>
+      <div class="inspector-row"><span class="inspector-key">Target Qubits:</span><span class="inspector-val">${node.qubits?.join(', ') || '—'}</span></div>
+      ${node.clbits?.length ? `<div class="inspector-row"><span class="inspector-key">Classical Bits:</span><span class="inspector-val" style="color:var(--amber);">${node.clbits.join(', ')}</span></div>` : ''}
+      ${node.params?.length ? `<div class="inspector-row"><span class="inspector-key">Gate Angles:</span><span class="inspector-val">[${node.params.map(p => Number(p).toFixed(3)).join(', ')}]</span></div>` : ''}
     `;
   } else {
     extraRows += `
-      <div class="inspector-row"><span class="inspector-key">Wire:</span><span class="inspector-val">${node.wire || '—'}</span></div>
+      <div class="inspector-row"><span class="inspector-key">Wire Register:</span><span class="inspector-val">${node.wire || '—'}</span></div>
     `;
   }
 
   body.innerHTML = `
-    <div class="inspector-row"><span class="inspector-key">Kind:</span><span class="inspector-val">${(node.type || '').toUpperCase()}</span></div>
+    <div class="inspector-row"><span class="inspector-key">IR Kind:</span><span class="inspector-val">${(node.type || '').toUpperCase()} IR NODE</span></div>
+    <div class="inspector-row"><span class="inspector-key">Scheduling Tier:</span><span class="inspector-val" style="color:var(--sky);">${stageNum}</span></div>
     ${extraRows}
-    <div class="inspector-row"><span class="inspector-key">Inputs:</span><span class="inspector-val">${predNames}</span></div>
-    <div class="inspector-row"><span class="inspector-key">Outputs:</span><span class="inspector-val">${succNames}</span></div>
+    <div class="inspector-row">
+      <span class="inspector-key">Critical Path:</span>
+      <span class="inspector-val" style="color:${isCrit ? '#fbbf24' : '#34d399'};font-weight:700;">
+        ${isCrit ? '⚡ Yes (Depth Bottleneck)' : 'No (Slack available)'}
+      </span>
+    </div>
+    <div class="inspector-row"><span class="inspector-key">Prerequisites:</span><span class="inspector-val">${predNames}</span></div>
+    <div class="inspector-row"><span class="inspector-key">Dependents:</span><span class="inspector-val">${succNames}</span></div>
+    <div style="font-size:0.69rem;color:#94a3b8;line-height:1.45;margin-top:8px;border-top:1px solid rgba(129,140,248,0.2);padding-top:6px;">
+      <strong>Compiler IR Role:</strong> Preserves causality on wires. Any op in this stage without dependency can run in parallel; adjacent self-inverses can be collapsed by optimization passes.
+    </div>
   `;
 
   inspector.classList.remove('hidden');
@@ -909,6 +1094,7 @@ function setupDagControls() {
   const toggleWires = $('toggle-dag-wires');
   const btnCloseInspector = $('btn-close-inspector');
   const btnCopyAscii = $('btn-copy-dag-ascii');
+  const btnCritical = $('btn-toggle-critical');
 
   function updateTransform() {
     const root = $('dag-pan-zoom-root');
@@ -983,6 +1169,14 @@ function setupDagControls() {
   toggleWires?.addEventListener('change', () => {
     if (currentDagInfo && currentDagInfo.graph) {
       drawDagSvg(currentDagInfo.graph, toggleWires.checked, currentDagLayout);
+    }
+  });
+
+  btnCritical?.addEventListener('click', () => {
+    showDagCriticalPath = !showDagCriticalPath;
+    btnCritical.classList.toggle('active', showDagCriticalPath);
+    if (currentDagInfo && currentDagInfo.graph) {
+      drawDagSvg(currentDagInfo.graph, toggleWires?.checked, currentDagLayout);
     }
   });
 

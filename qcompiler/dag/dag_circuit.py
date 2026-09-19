@@ -284,6 +284,8 @@ class DAGCircuit:
             else:
                 node_info["name"] = f"node_{nid}"
                 node_info["label"] = f"node_{nid}"
+            node_info["in_degree"] = self._graph.in_degree(nid)
+            node_info["out_degree"] = self._graph.out_degree(nid)
             nodes.append(node_info)
 
         edges = []
@@ -296,17 +298,24 @@ class DAGCircuit:
                 "wire": w_name,
             })
 
-        # Calculate topological generations (layers)
+        # Calculate topological generations (parallel scheduling stages)
         try:
             generations = [list(gen) for gen in nx.topological_generations(self._graph)]
         except Exception:
             generations = []
+
+        # Calculate critical path (longest causality bottleneck through DAG)
+        try:
+            critical_path = list(nx.dag_longest_path(self._graph))
+        except Exception:
+            critical_path = []
 
         return {
             "num_nodes": len(nodes),
             "num_edges": len(edges),
             "num_ops": self.num_ops(),
             "depth": self.depth(),
+            "critical_path": critical_path,
             "nodes": nodes,
             "edges": edges,
             "layers": generations,

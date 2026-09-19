@@ -566,6 +566,107 @@ kbd {
   overflow-y: auto;
 }
 
+/* ─── DAG Conceptual Banner ──────────────────────────────── */
+.dag-concept-banner {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.85) 100%);
+  border: 1px solid rgba(129, 140, 248, 0.22);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.concept-badge-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.concept-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  color: #c7d2fe;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.concept-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+.pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.pill-dot.emerald { background: var(--emerald); box-shadow: 0 0 5px var(--emerald); }
+.pill-dot.indigo { background: var(--indigo); box-shadow: 0 0 5px var(--indigo); }
+.pill-dot.sky { background: var(--sky); box-shadow: 0 0 5px var(--sky); }
+
+.concept-desc {
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: #94a3b8;
+}
+.concept-desc strong {
+  color: #f1f5f9;
+}
+.code-ref {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(99, 131, 255, 0.2);
+  color: #38bdf8;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.dag-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.73rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.dag-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+.dag-toggle-btn.active {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.6);
+  color: #fbbf24;
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+.crit-icon {
+  color: #fbbf24;
+}
+
 .dag-header-row {
   display: flex;
   align-items: center;
@@ -674,6 +775,38 @@ kbd {
   z-index: 10;
 }
 
+.dag-legend-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 6px 14px;
+  background: rgba(10, 15, 30, 0.95);
+  border-bottom: 1px solid rgba(129, 140, 248, 0.15);
+  z-index: 9;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.legend-dot.gold { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.8); }
+.legend-dot.amber { background: #f97316; box-shadow: 0 0 6px rgba(249, 115, 22, 0.8); }
+.legend-dot.violet { background: #a855f7; box-shadow: 0 0 6px rgba(168, 85, 247, 0.8); }
+.legend-dot.emerald { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.8); }
+.legend-dot.sky { background: #38bdf8; box-shadow: 0 0 6px rgba(56, 189, 248, 0.8); }
+
 .dag-canvas-hint {
   font-size: 0.7rem;
   color: var(--text-muted);
@@ -727,6 +860,23 @@ kbd {
   display: block;
 }
 
+/* ─── DAG Stage Frontiers (Compiler Parallel Wavefronts) ─── */
+.dag-stage-lane {
+  fill: rgba(15, 23, 42, 0.45);
+  stroke: rgba(99, 131, 255, 0.12);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 4;
+}
+.dag-stage-lane.active-frontier {
+  fill: rgba(30, 41, 59, 0.35);
+  stroke: rgba(129, 140, 248, 0.25);
+}
+.dag-stage-header-bg {
+  fill: rgba(12, 17, 34, 0.9);
+  stroke: rgba(99, 131, 255, 0.25);
+  stroke-width: 1;
+}
+
 /* ─── Quantum Rails & Wires inside SVG ───────────────────── */
 .quantum-rail {
   stroke: rgba(99, 131, 255, 0.12);
@@ -744,16 +894,49 @@ kbd {
   transition: opacity 0.2s var(--ease), filter 0.2s var(--ease), transform 0.15s var(--ease);
 }
 .dag-node:hover {
-  filter: drop-shadow(0 0 12px rgba(129,140,248,0.7));
+  filter: drop-shadow(0 0 14px rgba(129,140,248,0.85));
 }
 .dag-node.active-selected {
-  filter: drop-shadow(0 0 16px rgba(56,189,248,0.95)) !important;
+  filter: drop-shadow(0 0 18px rgba(56,189,248,0.95)) !important;
 }
 .dag-node.highlighted {
-  filter: drop-shadow(0 0 10px rgba(167,139,250,0.8));
+  filter: drop-shadow(0 0 12px rgba(167,139,250,0.8));
 }
 .dag-node.dimmed {
   opacity: 0.15;
+}
+
+/* Critical Path & Causal Dependencies Highlighting */
+.dag-node.on-critical-path rect.node-card-bg {
+  stroke: #f59e0b !important;
+  stroke-width: 2.4px !important;
+}
+.dag-node.on-critical-path {
+  filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.85)) !important;
+}
+
+.dag-node.is-prerequisite rect.node-card-bg {
+  stroke: #f97316 !important;
+  stroke-width: 2.5px !important;
+}
+.dag-node.is-prerequisite {
+  filter: drop-shadow(0 0 16px rgba(249, 115, 22, 0.95)) !important;
+}
+
+.dag-node.is-dependent rect.node-card-bg {
+  stroke: #a855f7 !important;
+  stroke-width: 2.5px !important;
+}
+.dag-node.is-dependent {
+  filter: drop-shadow(0 0 16px rgba(168, 85, 247, 0.95)) !important;
+}
+
+.dag-node.is-independent rect.node-card-bg {
+  stroke: #10b981 !important;
+  stroke-width: 1.8px !important;
+}
+.dag-node.is-independent {
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.65)) !important;
 }
 
 .dag-edge {
@@ -773,6 +956,22 @@ kbd {
 }
 .dag-edge.dimmed {
   opacity: 0.08;
+}
+
+.dag-edge.on-critical-path {
+  stroke: #f59e0b !important;
+  stroke-width: 3.5px !important;
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.85)) !important;
+}
+.dag-edge.is-prereq-edge {
+  stroke: #f97316 !important;
+  stroke-width: 3.2px !important;
+  filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.85)) !important;
+}
+.dag-edge.is-dep-edge {
+  stroke: #a855f7 !important;
+  stroke-width: 3.2px !important;
+  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.85)) !important;
 }
 
 /* Node Inspector Card (Docked Top-Right, Non-Intrusive) */
