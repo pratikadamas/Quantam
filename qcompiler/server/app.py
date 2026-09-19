@@ -226,9 +226,12 @@ async def compile_circuit(req: CompileRequest):
     cr = sandbox_result.compile_result
     assert cr is not None
 
-    # DAG layer info
+    # DAG layer & graph info
     try:
         layers = cr.dag.layers()
+        dag_dict = cr.dag.to_dict()
+        dag_ascii = cr.dag.draw_ascii()
+        dag_mermaid = cr.dag.draw_mermaid()
         dag_info = {
             "num_layers": len(layers),
             "num_nodes": cr.dag.num_ops(),
@@ -237,9 +240,12 @@ async def compile_circuit(req: CompileRequest):
                 [node.instruction.gate.name for node in layer if node.instruction]
                 for layer in layers
             ],
+            "graph": dag_dict,
+            "ascii_draw": dag_ascii,
+            "mermaid": dag_mermaid,
         }
-    except Exception:
-        dag_info = {}
+    except Exception as exc:
+        dag_info = {"error": str(exc)}
 
     return CompileResponse(
         success=True,

@@ -18,7 +18,7 @@ Dependencies: networkx (pure Python graph library — no Qiskit).
 """
 from __future__ import annotations
 
-from typing import Dict, Generator, Iterable, Iterator, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, Iterator, List, Optional, Set, Tuple, Union
 
 import networkx as nx
 
@@ -254,6 +254,113 @@ class DAGCircuit:
             name = node.instruction.gate.name
             counts[name] = counts.get(name, 0) + 1
         return counts
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize the DAG to a JSON-compatible dictionary."""
+        nodes = []
+        for nid in sorted(self._graph.nodes):
+            data: DAGNode = self._graph.nodes[nid]["data"]
+            node_info: Dict[str, Any] = {
+                "id": nid,
+                "type": data.kind.name.lower(),
+            }
+            if data.kind == DAGNodeType.OP and data.instruction:
+                instr = data.instruction
+                node_info["name"] = instr.gate.name.upper()
+                node_info["gate"] = instr.gate.name
+                node_info["qubits"] = [q.name for q in instr.qubits]
+                node_info["clbits"] = [c.name for c in instr.clbits]
+                node_info["params"] = [float(p) for p in instr.gate.params]
+                q_targets = ", ".join(q.name for q in instr.qubits)
+                if instr.clbits:
+                    q_targets += f" → {', '.join(c.name for c in instr.clbits)}"
+                node_info["label"] = f"{instr.gate.name.upper()}({q_targets})"
+                node_info["is_barrier"] = instr.gate.is_barrier
+            elif data.wire is not None:
+                w_name = getattr(data.wire, "name", str(data.wire))
+                node_info["name"] = f"{data.kind.name}[{w_name}]"
+                node_info["wire"] = w_name
+                node_info["label"] = f"{data.kind.name}[{w_name}]"
+            else:
+                node_info["name"] = f"node_{nid}"
+                node_info["label"] = f"node_{nid}"
+            nodes.append(node_info)
+
+        edges = []
+        for u, v, attrs in self._graph.edges(data=True):
+            wire = attrs.get("wire")
+            w_name = getattr(wire, "name", str(wire)) if wire is not None else ""
+            edges.append({
+                "source": u,
+                "target": v,
+                "wire": w_name,
+            })
+
+        # Calculate topological generations (layers)
+        try:
+            generations = [list(gen) for gen in nx.topological_generations(self._graph)]
+        except Exception:
+            generations = []
+
+        return {
+            "num_nodes": len(nodes),
+            "num_edges": len(edges),
+            "num_ops": self.num_ops(),
+            "depth": self.depth(),
+            "nodes": nodes,
+            "edges": edges,
+            "layers": generations,
+        }
+
+    def draw_ascii(self) -> str:
+        """Render a readable text-based ASCII representation of the DAG."""
+        lines = [
+            f"DAGCircuit: {self.name} (Ops: {self.num_ops()}, Total Nodes: {self._graph.number_of_nodes()}, Depth: {self.depth()})",
+            "=" * 60,
+        ]
+        try:
+            generations = list(nx.topological_generations(self._graph))
+        except Exception:
+            generations = []
+
+        for layer_idx, gen in enumerate(generations):
+            lines.append(f"Layer {layer_idx}:")
+            for nid in sorted(gen):
+                node: DAGNode = self._graph.nodes[nid]["data"]
+                successors = list(self._graph.successors(nid))
+                succ_strs = []
+                for s in successors:
+                    edge_data = self._graph.get_edge_data(nid, s, default={})
+                    wire = edge_data.get("wire")
+                    w_str = getattr(wire, "name", str(wire)) if wire else "?"
+                    s_node: DAGNode = self._graph.nodes[s]["data"]
+                    succ_strs.append(f"--({w_str})--> [{s_node.node_id}] {s_node.name}")
+
+                if succ_strs:
+                    lines.append(f"  [{nid:2d}] {node.name:15s} " + "; ".join(succ_strs))
+                else:
+                    lines.append(f"  [{nid:2d}] {node.name:15s} (terminal)")
+        return "\n".join(lines)
+
+    def draw_mermaid(self) -> str:
+        """Render the DAG in Mermaid diagram format."""
+        lines = ["graph LR"]
+        for nid in sorted(self._graph.nodes):
+            data: DAGNode = self._graph.nodes[nid]["data"]
+            if data.kind == DAGNodeType.OP and data.instruction:
+                instr = data.instruction
+                q_str = ", ".join(q.name for q in instr.qubits)
+                lines.append(f'    n{nid}["{instr.gate.name.upper()}<br/><small>{q_str}</small>"]')
+            elif data.kind == DAGNodeType.IN:
+                lines.append(f'    n{nid}(["IN: {data.wire}"])')
+            else:
+                lines.append(f'    n{nid}(["OUT: {data.wire}"])')
+
+        for u, v, attrs in self._graph.edges(data=True):
+            wire = attrs.get("wire")
+            w_name = getattr(wire, "name", str(wire)) if wire else ""
+            lines.append(f"    n{u} -->|{w_name}| n{v}")
+        return "\n".join(lines)
 
     def __repr__(self) -> str:
         return (f"DAGCircuit(name={self.name!r}, "

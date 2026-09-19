@@ -37,6 +37,10 @@ class Qubit:
     def __str__(self) -> str:
         return f"{self.register}[{self.index}]"
 
+    @property
+    def name(self) -> str:
+        return str(self)
+
 
 @dataclass(frozen=True, order=True)
 class Clbit:
@@ -58,3 +62,7 @@ class Clbit:
 
     def __str__(self) -> str:
         return f"{self.register}[{self.index}]"
+
+    @property
+    def name(self) -> str:
+        return str(self)

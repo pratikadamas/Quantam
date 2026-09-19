@@ -183,9 +183,62 @@
       <div id="pane-dag" class="tab-pane hidden">
         <div id="dag-placeholder" class="placeholder">
           <div class="placeholder-icon">🔗</div>
-          <p>DAG layer information will appear here after compilation.</p>
+          <p>DAG graph and layer information will appear here after compilation.</p>
         </div>
-        <div id="dag-content" class="dag-content hidden"></div>
+        <div id="dag-content" class="dag-content hidden">
+          <!-- Summary header chips & view switcher -->
+          <div class="dag-header-row">
+            <div class="dag-summary" id="dag-summary-chips"></div>
+            <div class="dag-view-controls">
+              <div class="dag-view-modes">
+                <button class="dag-mode-btn active" id="btn-dag-visual" title="Interactive visual graph">Visual Graph</button>
+                <button class="dag-mode-btn" id="btn-dag-layers" title="Topological layer groups">Layers</button>
+                <button class="dag-mode-btn" id="btn-dag-ascii" title="ASCII text view">ASCII</button>
+              </div>
+              <div class="dag-layout-selector" title="Graph layout style">
+                <button class="dag-layout-btn active" id="btn-layout-rails" title="Quantum Rails layout (wires aligned)">Rails</button>
+                <button class="dag-layout-btn" id="btn-layout-tree" title="Topological DAG tree layout">Tree</button>
+              </div>
+              <label class="dag-toggle-wires" title="Toggle wire input/output boundary nodes">
+                <input type="checkbox" id="toggle-dag-wires" checked />
+                <span>Wires</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Visual Graph View -->
+          <div id="dag-visual-view" class="dag-visual-container">
+            <div class="dag-canvas-toolbar">
+              <span class="dag-canvas-hint">Drag to pan • Scroll to zoom • Click node to inspect</span>
+              <div class="dag-zoom-btns">
+                <button id="btn-dag-zoom-in" class="dag-ctrl-btn" title="Zoom In">+</button>
+                <button id="btn-dag-zoom-reset" class="dag-ctrl-btn" title="Reset Zoom">⟲</button>
+                <button id="btn-dag-zoom-out" class="dag-ctrl-btn" title="Zoom Out">−</button>
+              </div>
+            </div>
+            <div class="dag-svg-wrap" id="dag-svg-wrap">
+              <svg id="dag-svg" class="dag-svg" width="100%" height="100%"></svg>
+            </div>
+            <div id="dag-inspector" class="dag-inspector hidden">
+              <div class="inspector-header">
+                <span id="inspector-title" class="inspector-title">Node Details</span>
+                <button id="btn-close-inspector" class="inspector-close">✕</button>
+              </div>
+              <div id="inspector-body" class="inspector-body"></div>
+            </div>
+          </div>
+
+          <!-- Layers View -->
+          <div id="dag-layers-view" class="dag-layers-container hidden"></div>
+
+          <!-- ASCII View -->
+          <div id="dag-ascii-view" class="dag-ascii-container hidden">
+            <div class="ascii-toolbar">
+              <button id="btn-copy-dag-ascii" class="btn-ghost btn-sm">Copy ASCII</button>
+            </div>
+            <pre id="dag-ascii-pre" class="dag-ascii-pre"></pre>
+          </div>
+        </div>
       </div>
 
       <!-- Circuit ASCII -->
