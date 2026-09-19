@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qcompiler — Quantum Circuit Compiler</title>
+  <meta name="description" content="Write quantum circuits in Python and compile them to OpenQASM 3 using the qcompiler pipeline: DAG, optimization, gate decomposition." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Monaco Editor (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+  <!-- Highlight.js for QASM output -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<!-- ======================= HEADER ======================= -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="14" r="12" stroke="url(#lg1)" stroke-width="2"/>
+          <circle cx="14" cy="14" r="5" fill="url(#lg2)"/>
+          <line x1="2" y1="14" x2="26" y2="14" stroke="url(#lg1)" stroke-width="1.5" stroke-dasharray="3 2"/>
+          <line x1="14" y1="2" x2="14" y2="26" stroke="url(#lg1)" stroke-width="1.5" stroke-dasharray="3 2"/>
+          <defs>
+            <linearGradient id="lg1" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#818cf8"/>
+              <stop offset="1" stop-color="#38bdf8"/>
+            </linearGradient>
+            <linearGradient id="lg2" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#818cf8"/>
+              <stop offset="1" stop-color="#38bdf8"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <span class="logo-text">q<span class="logo-accent">compiler</span></span>
+    </div>
+
+    <nav class="header-nav">
+      <span class="badge">from-scratch</span>
+      <span class="badge badge-blue">no qiskit core</span>
+      <span class="badge badge-green">OpenQASM 3</span>
+    </nav>
+
+    <div class="header-actions">
+      <button id="btn-docs" class="btn-ghost" title="Pipeline docs">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 5h5M5.5 8h5M5.5 11h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Docs
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ======================= PIPELINE BAR ======================= -->
+<div class="pipeline-bar">
+  <div class="pipeline-inner">
+    <div class="pipe-step active" id="ps-code">
+      <span class="pipe-icon">📝</span>Python Code
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step" id="ps-ir">
+      <span class="pipe-icon">🔷</span>Circuit IR
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step" id="ps-dag">
+      <span class="pipe-icon">🔗</span>DAG
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step" id="ps-opt">
+      <span class="pipe-icon">⚡</span>Optimization
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step" id="ps-decomp">
+      <span class="pipe-icon">🔬</span>Decompose
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step" id="ps-qasm">
+      <span class="pipe-icon">📄</span>OpenQASM 3
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MAIN LAYOUT ======================= -->
+<main class="main-layout">
+
+  <!-- LEFT PANEL: Editor -->
+  <section class="panel panel-editor">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-dot dot-green"></span>
+        Quantum Circuit Code
+      </div>
+      <div class="panel-controls">
+        <!-- Optimization level -->
+        <label class="opt-label" for="opt-level">Opt:</label>
+        <select id="opt-level" class="opt-select" title="Optimization level">
+          <option value="0">O0 — none</option>
+          <option value="1" selected>O1 — default</option>
+          <option value="2">O2 — aggressive</option>
+        </select>
+
+        <button id="btn-run" class="btn-run" title="Compile (Ctrl+Enter)">
+          <span class="btn-run-icon">▶</span>
+          <span id="btn-run-text">Run</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Monaco Editor container -->
+    <div id="monaco-container"></div>
+
+    <!-- Examples sidebar -->
+    <div class="examples-bar">
+      <span class="examples-label">Examples:</span>
+      <div id="examples-list" class="examples-chips"></div>
+    </div>
+  </section>
+
+  <!-- RIGHT PANEL: Output -->
+  <section class="panel panel-output">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-dot dot-blue"></span>
+        Compiler Output
+      </div>
+      <div class="panel-controls">
+        <button id="btn-copy-qasm" class="btn-ghost btn-sm" title="Copy QASM">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="9" height="10" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M4 3V2a1 1 0 011-1h6a1 1 0 011 1v9a1 1 0 01-1 1h-1" stroke="currentColor" stroke-width="1.3"/></svg>
+          Copy QASM
+        </button>
+      </div>
+    </div>
+
+    <!-- Output tabs -->
+    <div class="tabs">
+      <button class="tab active" id="tab-qasm" data-tab="qasm">
+        <span>OpenQASM 3</span>
+      </button>
+      <button class="tab" id="tab-stats" data-tab="stats">
+        <span>Stats</span>
+      </button>
+      <button class="tab" id="tab-dag" data-tab="dag">
+        <span>DAG</span>
+      </button>
+      <button class="tab" id="tab-circuit" data-tab="circuit">
+        <span>Circuit</span>
+      </button>
+    </div>
+
+    <!-- Tab panels -->
+    <div class="tab-content">
+
+      <!-- QASM Output -->
+      <div id="pane-qasm" class="tab-pane active">
+        <div id="qasm-placeholder" class="placeholder">
+          <div class="placeholder-icon">⚛</div>
+          <p>Write a quantum circuit on the left and click <strong>Run</strong> to compile.</p>
+          <p class="placeholder-sub">Use <kbd>Ctrl</kbd>+<kbd>Enter</kbd> as shortcut.</p>
+        </div>
+        <pre id="qasm-output" class="qasm-pre hidden"><code id="qasm-code" class="language-qasm3"></code></pre>
+      </div>
+
+      <!-- Stats -->
+      <div id="pane-stats" class="tab-pane hidden">
+        <div id="stats-placeholder" class="placeholder">
+          <div class="placeholder-icon">📊</div>
+          <p>Compile a circuit to see optimization statistics.</p>
+        </div>
+        <div id="stats-content" class="stats-content hidden"></div>
+      </div>
+
+      <!-- DAG -->
+      <div id="pane-dag" class="tab-pane hidden">
+        <div id="dag-placeholder" class="placeholder">
+          <div class="placeholder-icon">🔗</div>
+          <p>DAG layer information will appear here after compilation.</p>
+        </div>
+        <div id="dag-content" class="dag-content hidden"></div>
+      </div>
+
+      <!-- Circuit ASCII -->
+      <div id="pane-circuit" class="tab-pane hidden">
+        <div id="circuit-placeholder" class="placeholder">
+          <div class="placeholder-icon">🔷</div>
+          <p>ASCII circuit diagram will appear here after compilation.</p>
+        </div>
+        <pre id="circuit-draw" class="circuit-pre hidden"></pre>
+      </div>
+
+    </div>
+
+    <!-- Status bar -->
+    <div class="status-bar" id="status-bar">
+      <span id="status-text" class="status-idle">Ready — write a circuit and click Run</span>
+      <span id="status-time" class="status-time"></span>
+    </div>
+
+  </section>
+</main>
+
+<!-- ======================= DOCS MODAL ======================= -->
+<div id="docs-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>qcompiler Pipeline</h2>
+      <button id="btn-close-docs" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="pipeline-diagram">
+        <div class="pd-step">
+          <div class="pd-label">Your Python code</div>
+          <code class="pd-code">qc = QuantumCircuit(2, 2)<br>qc.h(0)<br>qc.cx(0,1)</code>
+        </div>
+        <div class="pd-arrow">↓</div>
+        <div class="pd-step pd-step-highlight">
+          <div class="pd-label">QuantumCircuit IR</div>
+          <p>Pure Python, zero Qiskit. Stores gates as <code>CircuitInstruction</code> objects with full unitary matrices.</p>
+        </div>
+        <div class="pd-arrow">↓</div>
+        <div class="pd-step pd-step-highlight">
+          <div class="pd-label">DAGCircuit (networkx)</div>
+          <p>Directed Acyclic Graph. Edges = qubit wires. Enables commutation analysis and parallel gate detection.</p>
+        </div>
+        <div class="pd-arrow">↓</div>
+        <div class="pd-step pd-step-highlight">
+          <div class="pd-label">Optimization Passes</div>
+          <ul>
+            <li><strong>RemoveBarriers</strong> — strip barrier pseudo-gates</li>
+            <li><strong>CancelInverses</strong> — H·H=I, S·S†=I, Rx(θ)·Rx(-θ)=I …</li>
+            <li><strong>MergeRotations</strong> — Rz(a)·Rz(b)=Rz(a+b)</li>
+          </ul>
+        </div>
+        <div class="pd-arrow">↓</div>
+        <div class="pd-step pd-step-highlight">
+          <div class="pd-label">Gate Decomposition</div>
+          <p>Recursively expands to basis gates: <code>{CX, H, T, S, Rz, Rx, Ry, X, Y, Z, …}</code></p>
+        </div>
+        <div class="pd-arrow">↓</div>
+        <div class="pd-step pd-step-highlight">
+          <div class="pd-label">OpenQASM 3</div>
+          <p>Pure-Python emitter. Qiskit is an <em>optional</em> bridge — never required.</p>
+        </div>
+      </div>
+
+      <h3>Quick API Reference</h3>
+      <pre class="modal-code"><code>from qcompiler import QuantumCircuit, compile
+
+qc = QuantumCircuit(n_qubits, n_clbits, name="my_circuit")
+
+# Single-qubit gates
+qc.h(0)           # Hadamard
+qc.x(0)           # Pauli-X
+qc.rz(pi/4, 0)    # Rotation around Z
+qc.t(0)           # T gate
+
+# Two-qubit gates
+qc.cx(0, 1)       # CNOT
+qc.cz(0, 1)       # CZ
+qc.swap(0, 1)     # SWAP
+
+# Three-qubit gates
+qc.ccx(0, 1, 2)   # Toffoli
+
+# Measurement
+qc.measure(0, 0)  # qubit 0 → clbit 0
+qc.measure_all()  # measure all
+
+# Compile
+result = compile(qc, optimization_level=1)
+print(result.qasm)           # OpenQASM 3 string
+print(result.stats)          # gate counts, depth, ...
+</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= TOAST ======================= -->
+<div id="toast" class="toast hidden">Copied!</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
